@@ -22,8 +22,21 @@ class Header extends Component {
           <Link to="/" className="navbar-brand">
             {branding}
           </Link>
-          <div>
-            <ul className="navbar-nav mr-auto">
+          <button
+            className="navbar-toggler"
+            type="button"
+            data-toggle="collapse"
+            data-target="#navbar1">
+            <span className="navbar-toggler-icon" />
+          </button>
+
+          <div
+            className=" collapse navbar-collapse "
+            style={{
+              flexGrow: '0'
+            }}
+            id="navbar1">
+            <ul className="navbar-nav ">
               {isAuthenticated ? (
                 <React.Fragment>
                   <li className="nav-item">
