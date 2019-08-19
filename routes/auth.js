@@ -3,8 +3,8 @@ const router = express.Router();
 const passport = require('passport');
 const FacebookStrategy = require('passport-facebook');
 const checkAuth = require('../middleware/check-auth');
-
-//const authController = require('../controllers/auth');
+const client = require('../db/index');
+require('dotenv').config();
 
 // facebook strategy
 const FACEBOOK_APP_ID = '404668066834482';
@@ -20,6 +20,7 @@ passport.use(
     async function(accessToken, refreshToken, profile, cb) {
       const user = await getUser(profile.id);
       if (user) {
+        console.log({ user });
         return cb(null, profile);
       } else {
         let result = {};
@@ -31,12 +32,11 @@ passport.use(
             token: accessToken
           };
 
-          await createUser(newUser);
-          result.success = true;
+          const users = await createUser(newUser);
+          result = users;
         } catch (e) {
           result.success = false;
         } finally {
-          console.log(result);
           return cb(null, profile);
         }
       }
@@ -44,45 +44,68 @@ passport.use(
   )
 );
 
+// when login is successful, retrieve user info
+router.get('/login/success', (req, res) => {
+  if (req.user) {
+    res.json({
+      success: true,
+      message: 'user has successfully authenticated',
+      user: req.user._json,
+      cookies: req.cookies
+    });
+  }
+});
+
+// when login failed, send failed msg
+router.get('/login/failed', (req, res) => {
+  res.status(401).json({
+    success: false,
+    message: 'user failed to authenticate.'
+  });
+});
+
 router.get('/', (req, res) => {
   res.send('Welcome to the contacts management application');
 });
-router.get('/login', passport.authenticate('facebook', { scope: ['email'] }));
+router.get('/auth', passport.authenticate('facebook', { scope: ['email'] }));
 router.get(
   '/return',
   passport.authenticate('facebook', { failureRedirect: '/login' }),
   function(req, res) {
     // Successful authentication, redirect home.
-    res.redirect('/contacts');
+    res.redirect(process.env.CLIENT_ULR);
   }
 );
 
 router.get('/logout', checkAuth, (req, res) => {
   req.logout();
-  res.status(200).json({
-    message: 'successfully logout'
-  });
+  res.redirect(process.env.CLIENT_ULR);
 });
 
 async function getUser(fbId) {
   try {
-    const results = await client.query('select * from users where id = $1', [
-      fbid
-    ]);
-    return results.rows;
+    const result = await client.query(
+      'select * from public.user where id =$1',
+      [fbId]
+    );
+    if (result.row > 0) {
+      return result.rows;
+    }
+    return false;
   } catch (e) {
+    console.log(e);
     return false;
   }
 }
 
 async function createUser(user) {
   try {
-    await client.query(
+    const users = await client.query(
       'insert into public.user (id,name,email,token) values ($1, $2, $3, $4)',
       [user.id, user.name, user.email, user.token]
     );
 
-    return true;
+    return users;
   } catch (e) {
     return false;
   }

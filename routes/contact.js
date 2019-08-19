@@ -132,13 +132,12 @@ async function createContact(contact) {
 
 async function readContact(id) {
   try {
-    const results = await client.query(
-      'select id,name,email,phone from contact where id =$1',
-      [id]
-    );
-    return results.rows;
+    const result = await client.query('select * from contact where id =$1', [
+      id
+    ]);
+    return result.rows[0];
   } catch (e) {
-    return [];
+    return false;
   }
 }
 
